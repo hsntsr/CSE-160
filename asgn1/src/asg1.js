@@ -348,13 +348,6 @@ function togglePreciseMode() {
   g_preciseMode = !g_preciseMode;
   g_preciseVertices = [];
   document.getElementById('btnPrecise').textContent = 'Precise Mode: ' + (g_preciseMode ? 'ON' : 'OFF');
-  if (g_preciseMode) {
-    gl.clearColor(0.0, 0.0, 0.0, 0.0); // transparent so reference image shows through
-    document.getElementById('refImage').style.display = 'block';
-  } else {
-    gl.clearColor(0.0, 0.0, 0.0, 1.0); // back to black
-    document.getElementById('refImage').style.display = 'none';
-  }
   renderAllShapes();
 }
 
