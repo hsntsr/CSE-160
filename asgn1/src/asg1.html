@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Drawing App - CSE 160</title>
+    <style>
+      #canvasWrapper {
+        position: relative;
+        display: inline-block;
+        width: 400px;
+        height: 400px;
+      }
+      #refImage {
+        position: absolute;
+        top: 0; left: 0;
+        width: 400px;
+        height: 400px;
+        display: none;
+      }
+      #webgl {
+        position: absolute;
+        top: 0; left: 0;
+        background: transparent;
+      }
+    </style>
+  </head>
+
+  <body onload="main()">
+    <h1>Drawing App - CSE 160 Asgn 1</h1>
+    <p><strong>Extra features:</strong> Rainbow mode, Gravity mode, Color Wheel, Precise Drawing Mode</p>
+
+    <div style="display: inline-flex; gap: 20px; align-items: flex-start;">
+      <div id="canvasWrapper">
+        <img id="refImage" src="IMG_4500.png" alt="Reference" style="display:none;">
+        <canvas id="webgl" width="400" height="400">
+          Please use a browser that supports "canvas"
+        </canvas>
+      </div>
+      <img id="refImageSide" src="IMG_4500.png" alt="Reference Image" style="width:400px; height:400px; border: 1px solid #ccc;">
+    </div>
+
+    <p>
+      <button type="button" id="btnPoint" onclick="setShapeType('point')">Point</button>
+      <button type="button" id="btnTriangle" onclick="setShapeType('triangle')">Triangle</button>
+      <button type="button" id="btnCircle" onclick="setShapeType('circle')">Circle</button>
+    </p>
+
+    <p>
+      <button type="button" onclick="clearCanvas()">Clear</button>
+      <button type="button" id="btnRainbow" onclick="toggleRainbowMode()">Rainbow Mode: OFF</button>
+      <button type="button" id="btnGravity" onclick="toggleGravityMode()">Gravity Mode: OFF</button>
+      <button type="button" id="btnGravityReversed" onclick="toggleGravityReversed()">Gravity Reversed: OFF</button>
+    </p>
+
+    <p>
+      <button type="button" id="btnPrecise" onclick="togglePreciseMode()">Precise Mode: OFF</button>
+      <button type="button" onclick="logTriangleData()">Log Triangles</button>
+      <button type="button" onclick="drawPicture()">Draw Picture</button>
+    </p>
+
+
+    <p>Color <input type="color" id="colorPicker" value="#ffffff" oninput="updateColorFromPicker()"></p>
+    <p>Red <input type="range" min="0" max="255" value="255" class="slider" id="redSlider" oninput="updateColorFromSliders()"></p>
+    <p>Green <input type="range" min="0" max="255" value="255" class="slider" id="greenSlider" oninput="updateColorFromSliders()"></p>
+    <p>Blue <input type="range" min="0" max="255" value="255" class="slider" id="blueSlider" oninput="updateColorFromSliders()"></p>
+
+    <p>Size <input type="range" min="1" max="50" value="10" class="slider" id="sizeSlider" oninput="updateSize()"></p>
+    <p>Segments <input type="range" min="3" max="64" value="20" class="slider" id="segmentsSlider" oninput="updateSegments()"></p>
+
+    <script src="../lib/webgl-utils.js"></script>
+    <script src="../lib/webgl-debug.js"></script>
+    <script src="../lib/cuon-utils.js"></script>
+    <script src="Point.js"></script>
+    <script src="Triangle.js"></script>
+    <script src="Circle.js"></script>
+    <script src="asg1.js"></script>
+  </body>
+</html>
