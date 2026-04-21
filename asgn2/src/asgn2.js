@@ -53,6 +53,7 @@ let g_lastTimestamp    = 0;
 let g_poking           = false;
 let g_pokeStartTime    = 0;
 let g_pokeWasAnimating = false;
+let g_jumpY            = 0;   // vertical offset applied to entire body during jump
 
 // ─── Performance tracking ────────────────────────────────────────────────────
 let g_frameCount   = 0;
@@ -176,29 +177,90 @@ function tick(timestamp) {
 function updateAnimationAngles() {
   const t = g_time;
 
-  // Poke animation: startle reaction for 1.8s
+  // Poke animation: full jump for 2.0s
   if (g_poking) {
     const elapsed = t - g_pokeStartTime;
-    if (elapsed < 1.8) {
-      const p = elapsed / 1.8;
-      const wave = Math.sin(p * Math.PI);
-      g_lEarAngle    = -50 * wave;
-      g_rEarAngle    =  50 * wave;
-      g_headAngle    = -25 * wave;
-      g_flUpperAngle =  35 * wave;
-      g_frUpperAngle =  35 * wave;
-      g_flLowerAngle = -50 * wave;
-      g_frLowerAngle = -50 * wave;
-      g_flPawAngle   =  20 * wave;
-      g_frPawAngle   =  20 * wave;
-      g_blUpperAngle = -20 * wave;
-      g_brUpperAngle = -20 * wave;
-      g_blLowerAngle = -30 * wave;
-      g_brLowerAngle = -30 * wave;
+    const DUR = 2.0;
+    if (elapsed < DUR) {
+      const p = elapsed / DUR;
+
+      if (p < 0.12) {
+        // Crouch – coil the legs
+        const cp = p / 0.12;
+        g_jumpY        = -0.04 * cp;
+        g_headAngle    = -12 * cp;
+        g_lEarAngle    = -18 * cp;
+        g_rEarAngle    =  18 * cp;
+        g_flUpperAngle =  22 * cp;
+        g_frUpperAngle =  22 * cp;
+        g_flLowerAngle = -32 * cp;
+        g_frLowerAngle = -32 * cp;
+        g_flPawAngle   =  10 * cp;
+        g_frPawAngle   =  10 * cp;
+        g_blUpperAngle = -28 * cp;
+        g_brUpperAngle = -28 * cp;
+        g_blLowerAngle =  28 * cp;
+        g_brLowerAngle =  28 * cp;
+      } else if (p < 0.50) {
+        // Rising – body lifts, legs tuck
+        const rp = (p - 0.12) / (0.50 - 0.12);
+        const h  = Math.sin(rp * Math.PI / 2);
+        g_jumpY        =  0.42 * h;
+        g_headAngle    =  12 * h;
+        g_lEarAngle    = -38 * h;
+        g_rEarAngle    =  38 * h;
+        g_flUpperAngle = -38 * h;
+        g_frUpperAngle = -38 * h;
+        g_flLowerAngle = -48 * h;
+        g_frLowerAngle = -48 * h;
+        g_flPawAngle   = -15 * h;
+        g_frPawAngle   = -15 * h;
+        g_blUpperAngle = -42 * h;
+        g_brUpperAngle = -42 * h;
+        g_blLowerAngle = -32 * h;
+        g_brLowerAngle = -32 * h;
+      } else if (p < 0.80) {
+        // Falling – body drops, legs extend for landing
+        const fp = (p - 0.50) / (0.80 - 0.50);
+        const h  = Math.cos(fp * Math.PI / 2);
+        g_jumpY        =  0.42 * h;
+        g_headAngle    = -8 * (1 - h);
+        g_lEarAngle    = -38 * h;
+        g_rEarAngle    =  38 * h;
+        g_flUpperAngle = -38 * h;
+        g_frUpperAngle = -38 * h;
+        g_flLowerAngle = -48 * h;
+        g_frLowerAngle = -48 * h;
+        g_flPawAngle   = -15 * h;
+        g_frPawAngle   = -15 * h;
+        g_blUpperAngle = -42 * h;
+        g_brUpperAngle = -42 * h;
+        g_blLowerAngle = -32 * h;
+        g_brLowerAngle = -32 * h;
+      } else {
+        // Landing bounce – settle back to rest
+        const bp   = (p - 0.80) / (1.0 - 0.80);
+        const fade = 1 - bp;
+        g_jumpY        = Math.sin(bp * Math.PI * 3) * fade * 0.05;
+        g_headAngle    = -8  * fade;
+        g_lEarAngle    =  Math.sin(bp * Math.PI * 2) * 12 * fade;
+        g_rEarAngle    = -Math.sin(bp * Math.PI * 2) * 12 * fade;
+        g_flUpperAngle =  18 * fade;
+        g_frUpperAngle =  18 * fade;
+        g_flLowerAngle = -22 * fade;
+        g_frLowerAngle = -22 * fade;
+        g_flPawAngle   =   8 * fade;
+        g_frPawAngle   =   8 * fade;
+        g_blUpperAngle = -12 * fade;
+        g_brUpperAngle = -12 * fade;
+        g_blLowerAngle = -18 * fade;
+        g_brLowerAngle = -18 * fade;
+      }
       return;
     }
-    // Poke finished
+    // Poke finished – clean up
     g_poking = false;
+    g_jumpY  = 0;
     if (!g_pokeWasAnimating) {
       g_animating = false;
       document.getElementById('animBtn').textContent = 'Start Animation';
@@ -246,9 +308,9 @@ function renderScene() {
   // ── Body ──────────────────────────────────────────────────────────────────
   // bodyM is the "root" of the entire hierarchy
   const bodyM = new Matrix4();
-  bodyM.translate(0, 0.0, 0);
+  bodyM.translate(0, g_jumpY, 0);
   drawCube(new Matrix4(bodyM).scale(0.50, 0.35, 0.50),
-           [1.00, 0.97, 0.93, 1]);
+           [0.58, 0.36, 0.13, 1]);
 
   // ── Head ──────────────────────────────────────────────────────────────────
   // Pivot at base of head (top-front of body)
@@ -256,7 +318,7 @@ function renderScene() {
   headM.translate(0, 0.26, 0.17);
   headM.rotate(g_headAngle, 1, 0, 0);
   drawCube(new Matrix4(headM).scale(0.32, 0.30, 0.32),
-           [1.00, 0.97, 0.93, 1]);
+           [0.58, 0.36, 0.13, 1]);
 
   // Eyes
   drawCube(new Matrix4(headM).translate(-0.10, 0.06, 0.17).scale(0.055, 0.055, 0.03),
@@ -277,7 +339,7 @@ function renderScene() {
   lEarUpM.rotate(g_lEarAngle, 0, 0, 1);
   // Outer ear
   drawCube(new Matrix4(lEarUpM).translate(0, 0.14, 0).scale(0.08, 0.28, 0.05),
-           [1.00, 0.97, 0.93, 1]);
+           [0.58, 0.36, 0.13, 1]);
   // Inner pink
   drawCube(new Matrix4(lEarUpM).translate(0, 0.14, 0.018).scale(0.052, 0.22, 0.02),
            [1.00, 0.76, 0.78, 1]);
@@ -287,14 +349,14 @@ function renderScene() {
   lEarLoM.translate(0, 0.28, 0);
   lEarLoM.rotate(g_lEarAngle * 0.35, 0, 0, 1);
   drawCube(new Matrix4(lEarLoM).translate(0, 0.09, 0).scale(0.065, 0.18, 0.045),
-           [1.00, 0.97, 0.93, 1]);
+           [0.58, 0.36, 0.13, 1]);
 
   // ── Right ear ─────────────────────────────────────────────────────────────
   const rEarUpM = new Matrix4(headM);
   rEarUpM.translate(0.10, 0.15, 0.0);
   rEarUpM.rotate(g_rEarAngle, 0, 0, 1);
   drawCube(new Matrix4(rEarUpM).translate(0, 0.14, 0).scale(0.08, 0.28, 0.05),
-           [1.00, 0.97, 0.93, 1]);
+           [0.58, 0.36, 0.13, 1]);
   drawCube(new Matrix4(rEarUpM).translate(0, 0.14, 0.018).scale(0.052, 0.22, 0.02),
            [1.00, 0.76, 0.78, 1]);
 
@@ -302,7 +364,7 @@ function renderScene() {
   rEarLoM.translate(0, 0.28, 0);
   rEarLoM.rotate(g_rEarAngle * 0.35, 0, 0, 1);
   drawCube(new Matrix4(rEarLoM).translate(0, 0.09, 0).scale(0.065, 0.18, 0.045),
-           [1.00, 0.97, 0.93, 1]);
+           [0.58, 0.36, 0.13, 1]);
 
   // ── Tail – cylinder ───────────────────────────────────────────────────────
   drawCylinder(
@@ -320,69 +382,69 @@ function renderScene() {
   flUpM.translate(-0.185, -0.175, 0.17);
   flUpM.rotate(g_flUpperAngle, 1, 0, 0);
   drawCube(new Matrix4(flUpM).translate(0, -0.10, 0).scale(0.110, 0.20, 0.110),
-           [1.00, 0.95, 0.90, 1]);
+           [0.52, 0.32, 0.11, 1]);
 
   const flLoM = new Matrix4(flUpM);
   flLoM.translate(0, -0.20, 0);
   flLoM.rotate(g_flLowerAngle, 1, 0, 0);
   drawCube(new Matrix4(flLoM).translate(0, -0.085, 0).scale(0.095, 0.17, 0.095),
-           [1.00, 0.95, 0.90, 1]);
+           [0.52, 0.32, 0.11, 1]);
 
   const flPawM = new Matrix4(flLoM);
   flPawM.translate(0, -0.17, 0);
   flPawM.rotate(g_flPawAngle, 1, 0, 0);
   drawCube(new Matrix4(flPawM).translate(0, -0.028, 0.04).scale(0.115, 0.055, 0.165),
-           [1.00, 0.93, 0.88, 1]);
+           [0.48, 0.28, 0.09, 1]);
 
   // ── Front-right leg ───────────────────────────────────────────────────────
   const frUpM = new Matrix4(bodyM);
   frUpM.translate(0.185, -0.175, 0.17);
   frUpM.rotate(g_frUpperAngle, 1, 0, 0);
   drawCube(new Matrix4(frUpM).translate(0, -0.10, 0).scale(0.110, 0.20, 0.110),
-           [1.00, 0.95, 0.90, 1]);
+           [0.52, 0.32, 0.11, 1]);
 
   const frLoM = new Matrix4(frUpM);
   frLoM.translate(0, -0.20, 0);
   frLoM.rotate(g_frLowerAngle, 1, 0, 0);
   drawCube(new Matrix4(frLoM).translate(0, -0.085, 0).scale(0.095, 0.17, 0.095),
-           [1.00, 0.95, 0.90, 1]);
+           [0.52, 0.32, 0.11, 1]);
 
   const frPawM = new Matrix4(frLoM);
   frPawM.translate(0, -0.17, 0);
   frPawM.rotate(g_frPawAngle, 1, 0, 0);
   drawCube(new Matrix4(frPawM).translate(0, -0.028, 0.04).scale(0.115, 0.055, 0.165),
-           [1.00, 0.93, 0.88, 1]);
+           [0.48, 0.28, 0.09, 1]);
 
   // ── Back-left leg ─────────────────────────────────────────────────────────
   const blUpM = new Matrix4(bodyM);
   blUpM.translate(-0.185, -0.175, -0.17);
   blUpM.rotate(g_blUpperAngle, 1, 0, 0);
   drawCube(new Matrix4(blUpM).translate(0, -0.11, 0).scale(0.120, 0.22, 0.120),
-           [1.00, 0.95, 0.90, 1]);
+           [0.52, 0.32, 0.11, 1]);
 
   const blLoM = new Matrix4(blUpM);
   blLoM.translate(0, -0.22, 0);
   blLoM.rotate(g_blLowerAngle, 1, 0, 0);
   drawCube(new Matrix4(blLoM).translate(0, -0.09, 0).scale(0.100, 0.18, 0.100),
-           [1.00, 0.95, 0.90, 1]);
+           [0.52, 0.32, 0.11, 1]);
   // Back paw (no independent slider, follows lower leg)
-  drawCube(new Matrix4(blLoM).translate(0, -0.18, -0.04).scale(0.115, 0.055, 0.175),
-           [1.00, 0.93, 0.88, 1]);
+  drawCube(new Matrix4(blLoM).translate(0, -0.18, 0.07).scale(0.115, 0.055, 0.175),
+           [0.48, 0.28, 0.09, 1]);
 
   // ── Back-right leg ────────────────────────────────────────────────────────
   const brUpM = new Matrix4(bodyM);
   brUpM.translate(0.185, -0.175, -0.17);
   brUpM.rotate(g_brUpperAngle, 1, 0, 0);
   drawCube(new Matrix4(brUpM).translate(0, -0.11, 0).scale(0.120, 0.22, 0.120),
-           [1.00, 0.95, 0.90, 1]);
+           [0.52, 0.32, 0.11, 1]);
 
   const brLoM = new Matrix4(brUpM);
   brLoM.translate(0, -0.22, 0);
   brLoM.rotate(g_brLowerAngle, 1, 0, 0);
   drawCube(new Matrix4(brLoM).translate(0, -0.09, 0).scale(0.100, 0.18, 0.100),
-           [1.00, 0.95, 0.90, 1]);
-  drawCube(new Matrix4(brLoM).translate(0, -0.18, -0.04).scale(0.115, 0.055, 0.175),
-           [1.00, 0.93, 0.88, 1]);
+           [0.52, 0.32, 0.11, 1]);
+  drawCube(new Matrix4(brLoM).translate(0, -0.18, 0.07).scale(0.115, 0.055, 0.175),
+           [0.48, 0.28, 0.09, 1]);
 }
 
 // ─── Draw primitives ─────────────────────────────────────────────────────────
