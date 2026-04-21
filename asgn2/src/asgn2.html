@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Bunny - CSE 160 Asgn 2 - Hunter Pettus</title>
+  <style>
+    body { font-family: Arial, sans-serif; display: flex; gap: 16px; padding: 10px; background: #f0f4f8; }
+    canvas { border: 2px solid #555; display: block; background: #d8eaf5; }
+    .controls { min-width: 260px; max-height: 600px; overflow-y: auto; background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #ccc; }
+    .slider-row { display: flex; align-items: center; margin: 3px 0; gap: 6px; }
+    .slider-row label { width: 155px; font-size: 12px; flex-shrink: 0; }
+    .slider-row input[type=range] { width: 90px; }
+    .slider-row .val { width: 32px; font-size: 12px; color: #555; }
+    h1 { font-size: 18px; margin: 0 0 4px 0; }
+    h3 { font-size: 13px; margin: 8px 0 3px 0; border-bottom: 1px solid #ddd; color: #333; }
+    button { margin: 3px 3px 3px 0; padding: 5px 12px; cursor: pointer; }
+    #perf { font-size: 13px; font-weight: bold; color: #333; margin-top: 4px; }
+    #hint { font-size: 11px; color: #777; margin-top: 2px; }
+  </style>
+</head>
+<body onload="main()">
+  <div>
+    <canvas id="webgl" width="500" height="500">Browser does not support WebGL</canvas>
+    <div id="perf">FPS: --</div>
+    <div id="hint">Drag to rotate &nbsp;|&nbsp; Shift+click to poke</div>
+  </div>
+
+  <div class="controls">
+    <h1>Bunny - Hunter Pettus</h1>
+
+    <h3>Global Rotation</h3>
+    <div class="slider-row">
+      <label>Rotation X:</label>
+      <input type="range" min="-180" max="180" value="20" id="gRotX" oninput="updateSliders()">
+      <span class="val" id="gRotXVal">20</span>°
+    </div>
+    <div class="slider-row">
+      <label>Rotation Y:</label>
+      <input type="range" min="-180" max="180" value="-25" id="gRotY" oninput="updateSliders()">
+      <span class="val" id="gRotYVal">-25</span>°
+    </div>
+
+    <h3>Head &amp; Ears</h3>
+    <div class="slider-row">
+      <label>Head Nod:</label>
+      <input type="range" min="-40" max="40" value="0" id="headSlider" oninput="updateSliders()">
+      <span class="val" id="headVal">0</span>°
+    </div>
+    <div class="slider-row">
+      <label>Left Ear:</label>
+      <input type="range" min="-60" max="60" value="0" id="lEarSlider" oninput="updateSliders()">
+      <span class="val" id="lEarVal">0</span>°
+    </div>
+    <div class="slider-row">
+      <label>Right Ear:</label>
+      <input type="range" min="-60" max="60" value="0" id="rEarSlider" oninput="updateSliders()">
+      <span class="val" id="rEarVal">0</span>°
+    </div>
+
+    <h3>Front Left Leg</h3>
+    <div class="slider-row">
+      <label>Upper (thigh):</label>
+      <input type="range" min="-60" max="60" value="0" id="flUpperSlider" oninput="updateSliders()">
+      <span class="val" id="flUpperVal">0</span>°
+    </div>
+    <div class="slider-row">
+      <label>Lower (calf):</label>
+      <input type="range" min="-80" max="10" value="0" id="flLowerSlider" oninput="updateSliders()">
+      <span class="val" id="flLowerVal">0</span>°
+    </div>
+    <div class="slider-row">
+      <label>Paw:</label>
+      <input type="range" min="-40" max="40" value="0" id="flPawSlider" oninput="updateSliders()">
+      <span class="val" id="flPawVal">0</span>°
+    </div>
+
+    <h3>Front Right Leg</h3>
+    <div class="slider-row">
+      <label>Upper (thigh):</label>
+      <input type="range" min="-60" max="60" value="0" id="frUpperSlider" oninput="updateSliders()">
+      <span class="val" id="frUpperVal">0</span>°
+    </div>
+    <div class="slider-row">
+      <label>Lower (calf):</label>
+      <input type="range" min="-80" max="10" value="0" id="frLowerSlider" oninput="updateSliders()">
+      <span class="val" id="frLowerVal">0</span>°
+    </div>
+    <div class="slider-row">
+      <label>Paw:</label>
+      <input type="range" min="-40" max="40" value="0" id="frPawSlider" oninput="updateSliders()">
+      <span class="val" id="frPawVal">0</span>°
+    </div>
+
+    <h3>Back Left Leg</h3>
+    <div class="slider-row">
+      <label>Upper (thigh):</label>
+      <input type="range" min="-60" max="60" value="0" id="blUpperSlider" oninput="updateSliders()">
+      <span class="val" id="blUpperVal">0</span>°
+    </div>
+    <div class="slider-row">
+      <label>Lower (calf):</label>
+      <input type="range" min="-80" max="10" value="0" id="blLowerSlider" oninput="updateSliders()">
+      <span class="val" id="blLowerVal">0</span>°
+    </div>
+
+    <h3>Back Right Leg</h3>
+    <div class="slider-row">
+      <label>Upper (thigh):</label>
+      <input type="range" min="-60" max="60" value="0" id="brUpperSlider" oninput="updateSliders()">
+      <span class="val" id="brUpperVal">0</span>°
+    </div>
+    <div class="slider-row">
+      <label>Lower (calf):</label>
+      <input type="range" min="-80" max="10" value="0" id="brLowerSlider" oninput="updateSliders()">
+      <span class="val" id="brLowerVal">0</span>°
+    </div>
+
+    <h3>Animation</h3>
+    <button onclick="toggleAnimation()" id="animBtn">Start Animation</button>
+  </div>
+
+  <script src="../lib/webgl-utils.js"></script>
+  <script src="../lib/webgl-debug.js"></script>
+  <script src="../lib/cuon-utils.js"></script>
+  <script src="../lib/cuon-matrix.js"></script>
+  <script src="asgn2.js"></script>
+</body>
+</html>
