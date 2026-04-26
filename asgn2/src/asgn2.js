@@ -269,30 +269,31 @@ function updateAnimationAngles() {
     }
   }
 
-  // Normal hopping animation
-  const hop  = Math.sin(t * 3.0);
-  const hop2 = Math.sin(t * 3.0 + Math.PI);
+  // Hopping animation – all four legs move in sync
+  const hop = Math.sin(t * 3.5);
 
-  g_headAngle = hop * 5.0;
+  // Body rises on each hop (only goes up, never dips below rest)
+  g_jumpY = Math.max(0, hop) * 0.09;
 
-  g_lEarAngle = Math.sin(t * 1.8) * 14.0;
-  g_rEarAngle = -Math.sin(t * 1.8) * 14.0;
+  g_headAngle = hop * 7.0;
 
-  // Front legs alternate (out of phase)
-  g_flUpperAngle = hop  * 28.0;
-  g_frUpperAngle = hop2 * 28.0;
-  g_flLowerAngle = (hop  - 1.0) * 22.0;
-  g_frLowerAngle = (hop2 - 1.0) * 22.0;
-  g_flPawAngle   = hop  * 12.0;
-  g_frPawAngle   = hop2 * 12.0;
+  // Ears stream back as bunny launches, settle forward on landing
+  g_lEarAngle = -hop * 15.0;
+  g_rEarAngle =  hop * 15.0;
 
-  // Back legs mirror front with slight phase shift
-  const hopB  = Math.sin(t * 3.0 + 0.6);
-  const hopB2 = Math.sin(t * 3.0 + 0.6 + Math.PI);
-  g_blUpperAngle = hopB  * 32.0;
-  g_brUpperAngle = hopB2 * 32.0;
-  g_blLowerAngle = (hopB  - 1.0) * 26.0;
-  g_brLowerAngle = (hopB2 - 1.0) * 26.0;
+  // Both front legs swing forward together
+  g_flUpperAngle = hop * 26.0;
+  g_frUpperAngle = hop * 26.0;
+  g_flLowerAngle = (hop - 1.0) * 18.0;
+  g_frLowerAngle = (hop - 1.0) * 18.0;
+  g_flPawAngle   = hop * 10.0;
+  g_frPawAngle   = hop * 10.0;
+
+  // Both back legs push off together (opposite phase to front)
+  g_blUpperAngle = -hop * 30.0;
+  g_brUpperAngle = -hop * 30.0;
+  g_blLowerAngle = (hop + 1.0) * (-20.0);
+  g_brLowerAngle = (hop + 1.0) * (-20.0);
 }
 
 // ─── Scene renderer ──────────────────────────────────────────────────────────
@@ -321,9 +322,9 @@ function renderScene() {
            [0.58, 0.36, 0.13, 1]);
 
   // Eyes
-  drawCube(new Matrix4(headM).translate(-0.10, 0.06, 0.17).scale(0.055, 0.055, 0.03),
+  drawCube(new Matrix4(headM).translate(-0.10, 0.06, 0.20).scale(0.055, 0.055, 0.03),
            [0.10, 0.05, 0.05, 1]);
-  drawCube(new Matrix4(headM).translate( 0.10, 0.06, 0.17).scale(0.055, 0.055, 0.03),
+  drawCube(new Matrix4(headM).translate( 0.10, 0.06, 0.20).scale(0.055, 0.055, 0.03),
            [0.10, 0.05, 0.05, 1]);
 
   // Nose – cylinder (non-cube primitive), pivot into head
@@ -368,7 +369,7 @@ function renderScene() {
 
   // ── Tail – cylinder ───────────────────────────────────────────────────────
   drawCylinder(
-    new Matrix4(bodyM).translate(0, 0.09, -0.28).scale(0.13, 0.13, 0.13),
+    new Matrix4(bodyM).translate(0, 0.17, -0.20).scale(0.14, 0.14, 0.14),
     [1.00, 1.00, 1.00, 1]
   );
 
@@ -543,6 +544,7 @@ function toggleAnimation() {
   g_animating = !g_animating;
   document.getElementById('animBtn').textContent = g_animating ? 'Stop Animation' : 'Start Animation';
   if (!g_animating) {
+    g_jumpY = 0;
     syncSlidersFromAngles();
   }
 }
