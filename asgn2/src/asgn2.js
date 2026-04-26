@@ -383,13 +383,14 @@ function renderScene() {
   );
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Leg helper: pivot is at TOP of upper leg (attachment on body bottom)
-  //   drawCube shifts the cube DOWN so its top is at the pivot.
+  // Leg helper: pivots sit on the lower side faces of the body.
+  //   Each leg splays outward first, then keeps its front/back swing joint.
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── Front-left leg ────────────────────────────────────────────────────────
   const flUpM = new Matrix4(bodyM);
-  flUpM.translate(-0.185, -0.175, 0.17);
+  flUpM.translate(-0.27, -0.07, 0.16);
+  flUpM.rotate(-24, 0, 0, 1);
   flUpM.rotate(g_flUpperAngle, 1, 0, 0);
   drawCube(new Matrix4(flUpM).translate(0, -0.10, 0).scale(0.110, 0.20, 0.110),
            [0.52, 0.32, 0.11, 1]);
@@ -408,7 +409,8 @@ function renderScene() {
 
   // ── Front-right leg ───────────────────────────────────────────────────────
   const frUpM = new Matrix4(bodyM);
-  frUpM.translate(0.185, -0.175, 0.17);
+  frUpM.translate(0.27, -0.07, 0.16);
+  frUpM.rotate(24, 0, 0, 1);
   frUpM.rotate(g_frUpperAngle, 1, 0, 0);
   drawCube(new Matrix4(frUpM).translate(0, -0.10, 0).scale(0.110, 0.20, 0.110),
            [0.52, 0.32, 0.11, 1]);
@@ -427,7 +429,8 @@ function renderScene() {
 
   // ── Back-left leg ─────────────────────────────────────────────────────────
   const blUpM = new Matrix4(bodyM);
-  blUpM.translate(-0.185, -0.175, -0.17);
+  blUpM.translate(-0.28, -0.06, -0.16);
+  blUpM.rotate(-28, 0, 0, 1);
   blUpM.rotate(g_blUpperAngle, 1, 0, 0);
   drawCube(new Matrix4(blUpM).translate(0, -0.11, 0).scale(0.120, 0.22, 0.120),
            [0.52, 0.32, 0.11, 1]);
@@ -443,7 +446,8 @@ function renderScene() {
 
   // ── Back-right leg ────────────────────────────────────────────────────────
   const brUpM = new Matrix4(bodyM);
-  brUpM.translate(0.185, -0.175, -0.17);
+  brUpM.translate(0.28, -0.06, -0.16);
+  brUpM.rotate(28, 0, 0, 1);
   brUpM.rotate(g_brUpperAngle, 1, 0, 0);
   drawCube(new Matrix4(brUpM).translate(0, -0.11, 0).scale(0.120, 0.22, 0.120),
            [0.52, 0.32, 0.11, 1]);
