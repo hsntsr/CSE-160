@@ -46,7 +46,7 @@ let g_brUpperAngle = 0;
 let g_brLowerAngle = 0;
 
 // ─── Animation state ─────────────────────────────────────────────────────────
-let g_animating        = false;
+let g_animating        = true;
 let g_time             = 0;
 let g_lastTimestamp    = 0;
 
@@ -112,7 +112,12 @@ function buildCylinderVerts(segs) {
 // ─── Entry point ─────────────────────────────────────────────────────────────
 function main() {
   canvas = document.getElementById('webgl');
-  gl = getWebGLContext(canvas);
+  gl = WebGLUtils.setupWebGL(canvas, {
+    alpha: false,
+    depth: true,
+    antialias: true,
+    preserveDrawingBuffer: false
+  });
   if (!gl) { alert('WebGL not supported'); return; }
 
   if (!initShaders(gl, VSHADER_SOURCE, FSHADER_SOURCE)) {
@@ -136,7 +141,11 @@ function main() {
   gl.bindBuffer(gl.ARRAY_BUFFER, g_cylBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, cylVerts, gl.STATIC_DRAW);
 
+  gl.disable(gl.BLEND);
+  gl.disable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
+  gl.depthFunc(gl.LEQUAL);
+  gl.clearDepth(1.0);
   gl.clearColor(0.82, 0.91, 0.98, 1.0);
 
   // Mouse input
@@ -322,14 +331,14 @@ function renderScene() {
            [0.58, 0.36, 0.13, 1]);
 
   // Eyes
-  drawCube(new Matrix4(headM).translate(-0.10, 0.06, 0.20).scale(0.055, 0.055, 0.03),
+  drawCube(new Matrix4(headM).translate(-0.10, 0.06, 0.225).scale(0.055, 0.055, 0.035),
            [0.10, 0.05, 0.05, 1]);
-  drawCube(new Matrix4(headM).translate( 0.10, 0.06, 0.20).scale(0.055, 0.055, 0.03),
+  drawCube(new Matrix4(headM).translate( 0.10, 0.06, 0.225).scale(0.055, 0.055, 0.035),
            [0.10, 0.05, 0.05, 1]);
 
   // Nose – cylinder (non-cube primitive), pivot into head
   drawCylinder(
-    new Matrix4(headM).translate(0, -0.04, 0.17).rotate(90, 1, 0, 0).scale(0.055, 0.04, 0.055),
+    new Matrix4(headM).translate(0, -0.04, 0.205).rotate(90, 1, 0, 0).scale(0.055, 0.04, 0.055),
     [1.00, 0.50, 0.55, 1]
   );
 
@@ -369,7 +378,7 @@ function renderScene() {
 
   // ── Tail – cylinder ───────────────────────────────────────────────────────
   drawCylinder(
-    new Matrix4(bodyM).translate(0, 0.17, -0.20).scale(0.14, 0.14, 0.14),
+    new Matrix4(bodyM).translate(0, 0.15, -0.32).scale(0.14, 0.14, 0.14),
     [1.00, 1.00, 1.00, 1]
   );
 
