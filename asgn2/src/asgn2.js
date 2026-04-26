@@ -383,81 +383,64 @@ function renderScene() {
   );
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Leg helper: pivots sit on the lower side faces of the body.
-  //   Each leg splays outward first, then keeps its front/back swing joint.
+  // Minecraft-style block legs: short cuboid feet and larger rear haunches
+  // sit on the body sides instead of reading as dangling articulated limbs.
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── Front-left leg ────────────────────────────────────────────────────────
   const flUpM = new Matrix4(bodyM);
-  flUpM.translate(-0.27, -0.07, 0.16);
-  flUpM.rotate(-24, 0, 0, 1);
+  flUpM.translate(-0.29, -0.11, 0.16);
+  flUpM.rotate(-8, 0, 0, 1);
   flUpM.rotate(g_flUpperAngle, 1, 0, 0);
-  drawCube(new Matrix4(flUpM).translate(0, -0.10, 0).scale(0.110, 0.20, 0.110),
+  drawCube(new Matrix4(flUpM).translate(0, -0.035, 0).scale(0.12, 0.10, 0.13),
            [0.52, 0.32, 0.11, 1]);
 
   const flLoM = new Matrix4(flUpM);
-  flLoM.translate(0, -0.20, 0);
-  flLoM.rotate(g_flLowerAngle, 1, 0, 0);
-  drawCube(new Matrix4(flLoM).translate(0, -0.085, 0).scale(0.095, 0.17, 0.095),
-           [0.52, 0.32, 0.11, 1]);
-
-  const flPawM = new Matrix4(flLoM);
-  flPawM.translate(0, -0.17, 0);
-  flPawM.rotate(g_flPawAngle, 1, 0, 0);
-  drawCube(new Matrix4(flPawM).translate(0, -0.028, 0.04).scale(0.115, 0.055, 0.165),
+  flLoM.translate(0, -0.075, 0.02);
+  flLoM.rotate(g_flLowerAngle * 0.35 + g_flPawAngle, 1, 0, 0);
+  drawCube(new Matrix4(flLoM).translate(0, -0.015, 0.045).scale(0.13, 0.055, 0.20),
            [0.48, 0.28, 0.09, 1]);
 
   // ── Front-right leg ───────────────────────────────────────────────────────
   const frUpM = new Matrix4(bodyM);
-  frUpM.translate(0.27, -0.07, 0.16);
-  frUpM.rotate(24, 0, 0, 1);
+  frUpM.translate(0.29, -0.11, 0.16);
+  frUpM.rotate(8, 0, 0, 1);
   frUpM.rotate(g_frUpperAngle, 1, 0, 0);
-  drawCube(new Matrix4(frUpM).translate(0, -0.10, 0).scale(0.110, 0.20, 0.110),
+  drawCube(new Matrix4(frUpM).translate(0, -0.035, 0).scale(0.12, 0.10, 0.13),
            [0.52, 0.32, 0.11, 1]);
 
   const frLoM = new Matrix4(frUpM);
-  frLoM.translate(0, -0.20, 0);
-  frLoM.rotate(g_frLowerAngle, 1, 0, 0);
-  drawCube(new Matrix4(frLoM).translate(0, -0.085, 0).scale(0.095, 0.17, 0.095),
-           [0.52, 0.32, 0.11, 1]);
-
-  const frPawM = new Matrix4(frLoM);
-  frPawM.translate(0, -0.17, 0);
-  frPawM.rotate(g_frPawAngle, 1, 0, 0);
-  drawCube(new Matrix4(frPawM).translate(0, -0.028, 0.04).scale(0.115, 0.055, 0.165),
+  frLoM.translate(0, -0.075, 0.02);
+  frLoM.rotate(g_frLowerAngle * 0.35 + g_frPawAngle, 1, 0, 0);
+  drawCube(new Matrix4(frLoM).translate(0, -0.015, 0.045).scale(0.13, 0.055, 0.20),
            [0.48, 0.28, 0.09, 1]);
 
   // ── Back-left leg ─────────────────────────────────────────────────────────
   const blUpM = new Matrix4(bodyM);
-  blUpM.translate(-0.28, -0.06, -0.16);
-  blUpM.rotate(-28, 0, 0, 1);
+  blUpM.translate(-0.19, -0.15, -0.14);
+  blUpM.rotate(-4, 0, 0, 1);
   blUpM.rotate(g_blUpperAngle, 1, 0, 0);
-  drawCube(new Matrix4(blUpM).translate(0, -0.11, 0).scale(0.120, 0.22, 0.120),
+  drawCube(new Matrix4(blUpM).translate(-0.035, 0.015, -0.02).scale(0.20, 0.20, 0.22),
            [0.52, 0.32, 0.11, 1]);
 
   const blLoM = new Matrix4(blUpM);
-  blLoM.translate(0, -0.22, 0);
+  blLoM.translate(-0.035, -0.09, 0.06);
   blLoM.rotate(g_blLowerAngle, 1, 0, 0);
-  drawCube(new Matrix4(blLoM).translate(0, -0.09, 0).scale(0.100, 0.18, 0.100),
-           [0.52, 0.32, 0.11, 1]);
-  // Back paw (no independent slider, follows lower leg)
-  drawCube(new Matrix4(blLoM).translate(0, -0.18, 0.07).scale(0.115, 0.055, 0.175),
+  drawCube(new Matrix4(blLoM).translate(0, -0.045, 0.09).scale(0.19, 0.08, 0.32),
            [0.48, 0.28, 0.09, 1]);
 
   // ── Back-right leg ────────────────────────────────────────────────────────
   const brUpM = new Matrix4(bodyM);
-  brUpM.translate(0.28, -0.06, -0.16);
-  brUpM.rotate(28, 0, 0, 1);
+  brUpM.translate(0.19, -0.15, -0.14);
+  brUpM.rotate(4, 0, 0, 1);
   brUpM.rotate(g_brUpperAngle, 1, 0, 0);
-  drawCube(new Matrix4(brUpM).translate(0, -0.11, 0).scale(0.120, 0.22, 0.120),
+  drawCube(new Matrix4(brUpM).translate(0.035, 0.015, -0.02).scale(0.20, 0.20, 0.22),
            [0.52, 0.32, 0.11, 1]);
 
   const brLoM = new Matrix4(brUpM);
-  brLoM.translate(0, -0.22, 0);
+  brLoM.translate(0.035, -0.09, 0.06);
   brLoM.rotate(g_brLowerAngle, 1, 0, 0);
-  drawCube(new Matrix4(brLoM).translate(0, -0.09, 0).scale(0.100, 0.18, 0.100),
-           [0.52, 0.32, 0.11, 1]);
-  drawCube(new Matrix4(brLoM).translate(0, -0.18, 0.07).scale(0.115, 0.055, 0.175),
+  drawCube(new Matrix4(brLoM).translate(0, -0.045, 0.09).scale(0.19, 0.08, 0.32),
            [0.48, 0.28, 0.09, 1]);
 }
 
