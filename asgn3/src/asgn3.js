@@ -223,11 +223,14 @@ function main() {
   g_camera.updateViewMatrix();
 
   // Textures (async — world renders as gray until loaded)
-  loadTexture('../grass.webp', 0);
-  loadTexture('../oak.webp',   1);
+  loadTexture('../grass.png', 0);
+  loadTexture('../oak.png',   1);
 
   // Input
-  document.addEventListener('keydown', e => { g_keys[e.code] = true; });
+  document.addEventListener('keydown', e => {
+    g_keys[e.code] = true;
+    if (e.code === 'KeyR' && (g_gameOver || g_gameWon)) restartGame();
+  });
   document.addEventListener('keyup',   e => { g_keys[e.code] = false; onKeyUp(e); });
   canvas.addEventListener('click', () => {
     if (!g_pointerLocked) canvas.requestPointerLock();
@@ -459,9 +462,8 @@ function checkPuzzleConstraints() {
 }
 
 function endGame(win, msg) {
-  if (win) { g_gameWon = true; showMessage('🎉 ' + msg, 5000); }
-  else      { g_gameOver = true; showMessage('💀 ' + msg + '  — Press R to restart', 0); }
-  document.addEventListener('keydown', e => { if (e.code === 'KeyR') restartGame(); }, {once: true});
+  if (win) { g_gameWon = true; showMessage('You did it! All across safely! Press R to restart', 5000); }
+  else      { g_gameOver = true; showMessage(msg + '  Press R to restart', 0); }
 }
 
 function restartGame() {
