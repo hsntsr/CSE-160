@@ -223,8 +223,8 @@ function main() {
   g_camera.updateViewMatrix();
 
   // Textures (async — world renders as gray until loaded)
-  loadTexture('grass.webp', 0);
-  loadTexture('oak.webp',   1);
+  loadTexture('../grass.webp', 0);
+  loadTexture('../oak.webp',   1);
 
   // Input
   document.addEventListener('keydown', e => { g_keys[e.code] = true; });
