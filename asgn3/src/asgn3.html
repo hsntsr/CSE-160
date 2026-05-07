@@ -61,6 +61,39 @@
       background: #4a7c59; color: #fff; border-radius: 6px;
       font-size: 16px; font-family: monospace;
     }
+    #hint-btn {
+      position: absolute; bottom: 70px; right: 10px;
+      padding: 6px 12px; background: rgba(60,100,60,0.85);
+      color: #fff; border: 1px solid #8b8; border-radius: 4px;
+      font-family: monospace; font-size: 12px; cursor: pointer;
+    }
+    #hint-panel {
+      display: none;
+      position: absolute; bottom: 100px; right: 10px;
+      background: rgba(0,0,0,0.88); color: #dfd;
+      padding: 12px 16px; border-radius: 6px;
+      border: 1px solid #8b8; font-size: 13px;
+      line-height: 1.9; min-width: 280px;
+      pointer-events: none;
+    }
+    #hint-panel b { color: #fff; }
+    #hint-panel ol { padding-left: 18px; }
+    #snapshot-btn {
+      position: absolute; bottom: 42px; right: 10px;
+      padding: 6px 12px; background: rgba(0,0,0,0.65);
+      color: #fff; border: 1px solid #888; border-radius: 4px;
+      font-family: monospace; font-size: 12px; cursor: pointer;
+    }
+    #snapshot-output {
+      display: none;
+      position: absolute; top: 10px; left: 50%;
+      transform: translateX(-50%);
+      width: 480px; height: 320px;
+      font-family: monospace; font-size: 11px;
+      background: rgba(0,0,0,0.88); color: #9f9;
+      border: 1px solid #555; border-radius: 4px;
+      padding: 8px; resize: none;
+    }
   </style>
 </head>
 <body onload="main()">
@@ -84,9 +117,26 @@
 
   <div id="message"></div>
 
+  <button id="hint-btn" onclick="toggleHint()">? Hint</button>
+  <div id="hint-panel">
+    <b>Solution (7 trips):</b>
+    <ol>
+      <li>Carry <b>Goat</b> to right bank</li>
+      <li>Return alone</li>
+      <li>Carry <b>Wolf</b> to right bank</li>
+      <li>Bring <b>Goat</b> back</li>
+      <li>Carry <b>Cabbage</b> to right bank</li>
+      <li>Return alone</li>
+      <li>Carry <b>Goat</b> to right bank</li>
+    </ol>
+  </div>
+
+  <button id="snapshot-btn" onclick="snapshotMap()">Export Map</button>
+  <textarea id="snapshot-output" spellcheck="false"></textarea>
+
   <div id="instructions">
     WASD move &nbsp;|&nbsp; QE turn &nbsp;|&nbsp; Mouse look &nbsp;|&nbsp;
-    F pick up/put down &nbsp;|&nbsp; LClick delete block &nbsp;|&nbsp; RClick add block
+    F pick up/put down &nbsp;|&nbsp; H hint &nbsp;|&nbsp; LClick delete block &nbsp;|&nbsp; RClick add block
   </div>
 
   <div id="click-to-start">
