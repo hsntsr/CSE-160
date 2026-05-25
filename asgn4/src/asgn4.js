@@ -116,14 +116,22 @@ let g_objBuf    = null;   // loaded OBJ
 let g_objCount  = 0;
 
 // ─── Light state ──────────────────────────────────────────────────────────────
-let g_lightOn       = true;   // global Phong on/off
-let g_pointLightOn  = true;   // point light individually
+let g_lightOn       = true;
+let g_pointLightOn  = true;
 let g_normalViz     = false;
 let g_spotOn        = false;
 let g_lightPos      = [2.5, 3.0, 0.0];
 let g_lightColor    = [1, 1, 1];
-let g_lightAngle    = 0;      // used only for animation
+let g_lightAngle    = 0;
 const LIGHT_RADIUS  = 2.5;
+
+// ─── Lightning mode ───────────────────────────────────────────────────────────
+let g_lightningMode   = false;
+let g_strikeTimer     = 0;
+let g_strikeDur       = 0.7;
+let g_nextStrikeTimer = 0;
+let g_strikeIntensity = 0;
+let g_boltPoints      = [];
 
 // Spotlight: overhead, aimed down-left at the bunny
 const SPOT_POS = [1.2, 4.0, 0.8];
@@ -281,6 +289,31 @@ function tick(timestamp) {
     document.getElementById('sl-lz').value = g_lightPos[2].toFixed(2);
   }
 
+  // Lightning mode
+  if (g_lightningMode) {
+    g_nextStrikeTimer -= delta;
+    if (g_strikeTimer > 0) {
+      g_strikeTimer -= delta;
+      const p = 1 - g_strikeTimer / g_strikeDur;
+      if      (p < 0.12) g_strikeIntensity = (p / 0.12) * 4.5;                              // ramp up
+      else if (p < 0.32) g_strikeIntensity = 4.5;                                             // peak
+      else if (p < 0.46) g_strikeIntensity = 0.4;                                             // mid dip (double-flash)
+      else if (p < 0.60) g_strikeIntensity = 3.8;                                             // second flash
+      else               g_strikeIntensity = 3.8 * Math.pow(1 - (p - 0.60) / 0.40, 1.8);   // linger + fade
+    } else {
+      g_strikeIntensity = 0;
+    }
+    if (g_nextStrikeTimer <= 0) {
+      generateBolt();
+      g_strikeDur       = 0.65 + Math.random() * 0.35;  // 650–1000 ms
+      g_strikeTimer     = g_strikeDur;
+      g_nextStrikeTimer = 0.7  + Math.random() * 2.2;   // 0.7–2.9 s gap
+    }
+  } else {
+    g_strikeIntensity = 0;
+    g_boltPoints = [];
+  }
+
   // FPS
   g_frameCount++;
   if (timestamp - g_fpsLastTime >= 1000) {
@@ -291,6 +324,22 @@ function tick(timestamp) {
 
   renderScene();
   requestAnimationFrame(tick);
+}
+
+// ─── Lightning bolt path ──────────────────────────────────────────────────────
+function generateBolt() {
+  const lx = g_lightPos[0], ly = g_lightPos[1], lz = g_lightPos[2];
+  const groundY = -0.48;
+  g_boltPoints = [[lx, ly, lz]];
+  const steps = 7 + Math.floor(Math.random() * 5); // 7–11 zigzag segments
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const y = ly + (groundY - ly) * t;
+    const spread = 0.36 * (1 - t * 0.4); // taper slightly near ground
+    const x = lx + (Math.random() - 0.5) * spread;
+    const z = lz + (Math.random() - 0.5) * spread;
+    g_boltPoints.push([x, y, z]);
+  }
 }
 
 // ─── Animation angles (from asgn2) ───────────────────────────────────────────
@@ -315,6 +364,12 @@ function updateAnimationAngles() {
 
 // ─── Render ───────────────────────────────────────────────────────────────────
 function renderScene() {
+  // Flash the sky during lightning strikes
+  if (g_lightningMode && g_strikeIntensity > 2.0) {
+    gl.clearColor(0.38, 0.42, 0.58, 1.0);
+  } else {
+    gl.clearColor(0.10, 0.10, 0.18, 1.0);
+  }
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Camera
@@ -343,7 +398,17 @@ function renderScene() {
   } else {
     gl.uniform3f(u_LightPos, 0, 1000, 0);
   }
-  gl.uniform3f(u_LightColor, g_lightColor[0], g_lightColor[1], g_lightColor[2]);
+  // Lightning overrides the light color
+  let lc;
+  if (g_lightningMode && g_strikeIntensity > 0) {
+    const s = g_strikeIntensity;
+    lc = [0.82 * s, 0.88 * s, 1.0 * s]; // blue-white scaled by flash intensity
+  } else if (g_lightningMode) {
+    lc = [0.01, 0.01, 0.02]; // near-dark between flashes for drama
+  } else {
+    lc = g_lightColor;
+  }
+  gl.uniform3f(u_LightColor, lc[0], lc[1], lc[2]);
 
   // Spotlight
   gl.uniform1i(u_SpotOn, g_spotOn ? 1 : 0);
@@ -356,6 +421,11 @@ function renderScene() {
 
   // Ground
   drawGround();
+
+  // Lightning bolt — drawn before other geometry so it composites naturally
+  if (g_lightningMode && g_strikeIntensity > 0) {
+    drawLightningBolt(g_strikeIntensity);
+  }
 
   // Bunny (global rotation applied via model matrix root)
   const globalRot = new Matrix4();
@@ -603,6 +673,44 @@ function buildGroundBuffer() {
   // Not separately used — ground uses g_cubeBuf via drawBox
 }
 
+function drawLightningBolt(intensity) {
+  if (!g_boltPoints.length) return;
+  gl.uniform1i(u_LightOn, 0); // self-luminous — ignore scene lighting
+
+  const fade = Math.min(1.0, intensity / 4.5);
+  setColor(0.70 + 0.30 * fade, 0.84 + 0.16 * fade, 1.0, 1.0);
+  gl.uniform1i(u_whichTexture, -1);
+  gl.uniform1f(u_texColorWeight, 0.0);
+
+  const w = 0.012 + 0.016 * fade; // thicker at peak, thinner as it lingers
+
+  for (let i = 0; i < g_boltPoints.length - 1; i++) {
+    const p1 = g_boltPoints[i], p2 = g_boltPoints[i + 1];
+    const dx = p2[0]-p1[0], dy = p2[1]-p1[1], dz = p2[2]-p1[2];
+    const len = Math.sqrt(dx*dx + dy*dy + dz*dz);
+    if (len < 0.001) continue;
+
+    const dnx = dx/len, dny = dy/len, dnz = dz/len;
+    const mx = (p1[0]+p2[0])/2, my = (p1[1]+p2[1])/2, mz = (p1[2]+p2[2])/2;
+
+    // Rotate default +Y box to align with segment direction
+    const angle = Math.acos(Math.max(-1, Math.min(1, dny))) * 180 / Math.PI;
+    const axLen = Math.sqrt(dnz*dnz + dnx*dnx); // length of axis (dnz, 0, -dnx)
+
+    const M = new Matrix4();
+    M.setTranslate(mx, my, mz);
+    if (axLen > 0.001) {
+      M.rotate(angle, dnz / axLen, 0, -dnx / axLen);
+    } else if (dny < 0) {
+      M.rotate(180, 1, 0, 0); // straight down — flip around X
+    }
+    M.scale(w, len, w);
+    drawCubeM(M);
+  }
+
+  gl.uniform1i(u_LightOn, g_lightOn ? 1 : 0);
+}
+
 // ─── OBJ parser ───────────────────────────────────────────────────────────────
 function parseOBJ(text) {
   const positions = [], texCoords = [], normals = [], flat = [];
@@ -652,6 +760,12 @@ function togglePointLight() {
 function toggleSpotlight() {
   g_spotOn = !g_spotOn;
   document.getElementById('btn-spot').textContent = 'Spot Light: ' + (g_spotOn ? 'ON' : 'OFF');
+}
+
+function toggleLightning() {
+  g_lightningMode = !g_lightningMode;
+  g_nextStrikeTimer = 0; // fire first strike immediately on enable
+  document.getElementById('btn-lightning').textContent = 'Lightning: ' + (g_lightningMode ? 'ON' : 'OFF');
 }
 
 function toggleAnimation() {
