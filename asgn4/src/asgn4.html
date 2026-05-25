@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Assignment 4 – Hunter Pettus</title>
+  <style>
+    body { margin: 8px; font-family: Arial, sans-serif; font-size: 14px; background: #fff; color: #000; }
+    h1 { font-size: 22px; margin-bottom: 6px; }
+    canvas { display: block; }
+    #ui { margin-top: 6px; }
+    #ui p { margin: 3px 0; }
+    .row { display: flex; align-items: center; gap: 14px; margin: 5px 0; flex-wrap: wrap; }
+    .slider-group { display: flex; align-items: center; gap: 4px; }
+    .slider-group label { font-weight: bold; white-space: nowrap; }
+    input[type=range] { width: 140px; }
+    button { font-size: 13px; padding: 3px 10px; cursor: pointer; }
+    #perf { margin-top: 3px; }
+  </style>
+</head>
+<body onload="main()">
+  <h1>Assignment 4: Bunny with Phong Lighting</h1>
+
+  <canvas id="webgl" width="900" height="540">Browser does not support WebGL</canvas>
+
+  <div id="ui">
+    <p><b>Move:</b> W A S D &nbsp;|&nbsp; <b>Turn:</b> Q E &nbsp;|&nbsp; <b>Mouse look:</b> click canvas + drag</p>
+
+    <div class="row">
+      <button id="btn-light"   onclick="toggleLighting()">Lighting: ON</button>
+      <button id="btn-normals" onclick="toggleNormals()">Normal Viz: OFF</button>
+      <button id="btn-ptlight" onclick="togglePointLight()">Point Light: ON</button>
+      <button id="btn-spot"    onclick="toggleSpotlight()">Spot Light: OFF</button>
+      <label><input type="checkbox" id="chk-anim" checked onchange="toggleAnimation()"> Animate point light</label>
+    </div>
+
+    <div class="row">
+      <div class="slider-group">
+        <label>Light X</label>
+        <input type="range" id="sl-lx" min="-5" max="5" step="0.1" value="2.5" oninput="onLightXYZ()">
+      </div>
+      <div class="slider-group">
+        <label>Light Y</label>
+        <input type="range" id="sl-ly" min="0.5" max="8" step="0.1" value="3" oninput="onLightXYZ()">
+      </div>
+      <div class="slider-group">
+        <label>Light Z</label>
+        <input type="range" id="sl-lz" min="-5" max="5" step="0.1" value="0" oninput="onLightXYZ()">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="slider-group">
+        <label>Light R</label>
+        <input type="range" id="sl-r" min="0" max="100" value="100" oninput="onLightColor()">
+      </div>
+      <div class="slider-group">
+        <label>Light G</label>
+        <input type="range" id="sl-g" min="0" max="100" value="100" oninput="onLightColor()">
+      </div>
+      <div class="slider-group">
+        <label>Light B</label>
+        <input type="range" id="sl-b" min="0" max="100" value="100" oninput="onLightColor()">
+      </div>
+    </div>
+
+    <p id="perf">FPS: --</p>
+  </div>
+
+<script src="../lib/webgl-utils.js"></script>
+<script src="../lib/webgl-debug.js"></script>
+<script src="../lib/cuon-utils.js"></script>
+<script src="../lib/cuon-matrix.js"></script>
+<script src="vector-ext.js"></script>
+<script src="asgn4.js"></script>
+</body>
+</html>
