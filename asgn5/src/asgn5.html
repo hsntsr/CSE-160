@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Assignment 5 – Hunter Pettus</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; font-family: Arial, sans-serif; }
+    canvas { display: block; }
+
+    #ui {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      color: #fff;
+      pointer-events: none;
+      text-shadow: 0 0 6px #000;
+    }
+    #ui h2 { font-size: 18px; margin-bottom: 6px; letter-spacing: 1px; }
+    #ui p  { font-size: 13px; line-height: 1.6; opacity: 0.85; }
+
+    #buttons {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 16px;
+    }
+
+    #explode-btn, #blackhole-btn {
+      padding: 12px 32px;
+      color: #fff;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      letter-spacing: 2px;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    #explode-btn {
+      background: #c0392b;
+      border: 2px solid #e74c3c;
+      box-shadow: 0 0 20px #e74c3c88;
+    }
+    #explode-btn:hover  { background: #e74c3c; box-shadow: 0 0 40px #e74c3ccc; }
+    #explode-btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
+
+    #blackhole-btn {
+      background: #1a0033;
+      border: 2px solid #9b59b6;
+      box-shadow: 0 0 20px #9b59b688;
+      display: none;
+    }
+    #blackhole-btn.visible { display: inline-block; }
+    #blackhole-btn:hover  { background: #6c3483; box-shadow: 0 0 40px #9b59b6cc; }
+    #blackhole-btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
+
+    #loading {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 20px;
+      z-index: 999;
+    }
+    #loading-bar-wrap {
+      width: 300px;
+      height: 6px;
+      background: #222;
+      border-radius: 3px;
+      margin-top: 16px;
+    }
+    #loading-bar {
+      height: 100%;
+      width: 0%;
+      background: #3498db;
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
+  </style>
+</head>
+<body>
+
+<div id="loading">
+  <div>Loading Space Scene…</div>
+  <div id="loading-bar-wrap"><div id="loading-bar"></div></div>
+</div>
+
+<div id="ui">
+  <h2>Assignment 5 – Hunter Pettus &nbsp;|&nbsp; ISS – Low Earth Orbit</h2>
+  <p>Left-drag: Orbit &nbsp;|&nbsp; Right-drag: Pan &nbsp;|&nbsp; Scroll: Zoom<br>
+     Press <b>E</b> to detonate Earth &nbsp;|&nbsp; Press <b>B</b> to spawn Black Hole</p>
+</div>
+
+<div id="buttons">
+  <button id="explode-btn">DETONATE EARTH</button>
+  <button id="blackhole-btn">SPAWN BLACK HOLE</button>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
+
+// ─── Renderer ────────────────────────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.8;
+document.body.appendChild(renderer.domElement);
+
+// ─── Scene & Camera ───────────────────────────────────────────────────────────
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 50000);
+camera.position.set(0, 80, 280);
+
+// ─── Controls ─────────────────────────────────────────────────────────────────
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.minDistance   = 20;
+controls.maxDistance   = 3000;
+
+// ─── Texture Loader ───────────────────────────────────────────────────────────
+const loader  = new THREE.TextureLoader();
+const loadingBar = document.getElementById('loading-bar');
+let loaded = 0;
+const TOTAL = 5;
+function onLoad() {
+  loaded++;
+  loadingBar.style.width = (loaded / TOTAL * 100) + '%';
+  if (loaded >= TOTAL) document.getElementById('loading').style.display = 'none';
+}
+// Safety: dismiss loading screen after 6 seconds no matter what
+setTimeout(() => { document.getElementById('loading').style.display = 'none'; }, 6000);
+
+// ─── Textures (reliable CDN sources) ─────────────────────────────────────────
+const earthDayTex    = loader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg',   onLoad);
+const earthNormalTex = loader.load('https://threejs.org/examples/textures/planets/earth_normal_2048.jpg', onLoad);
+const earthSpecTex   = loader.load('https://threejs.org/examples/textures/planets/earth_specular_2048.jpg',onLoad);
+const moonTex        = loader.load('https://threejs.org/examples/textures/planets/moon_1024.jpg',         onLoad);
+const cloudsTex      = loader.load('https://threejs.org/examples/textures/planets/earth_clouds_1024.png', onLoad);
+
+earthDayTex.colorSpace    = THREE.SRGBColorSpace;
+moonTex.colorSpace         = THREE.SRGBColorSpace;
+
+// ─── Skybox ───────────────────────────────────────────────────────────────────
+// Milky Way cubemap from Three.js examples
+const cubeLoader = new THREE.CubeTextureLoader();
+cubeLoader.setPath('https://threejs.org/examples/textures/cube/MilkyWay/');
+const skybox = cubeLoader.load(['px.jpg','nx.jpg','py.jpg','ny.jpg','pz.jpg','nz.jpg']);
+scene.background = skybox;
+
+// ─── Lighting (4 different types) ────────────────────────────────────────────
+// 1. AmbientLight – faint space fill
+const ambient = new THREE.AmbientLight(0x111133, 1.2);
+scene.add(ambient);
+
+// 2. DirectionalLight – the Sun
+const sunLight = new THREE.DirectionalLight(0xfff5e0, 3.5);
+sunLight.position.set(2000, 500, 1000);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(2048, 2048);
+sunLight.shadow.camera.near = 1;
+sunLight.shadow.camera.far  = 5000;
+sunLight.shadow.camera.left = sunLight.shadow.camera.bottom = -500;
+sunLight.shadow.camera.right = sunLight.shadow.camera.top   =  500;
+scene.add(sunLight);
+
+// 3. HemisphereLight – subtle sky/ground gradient
+const hemi = new THREE.HemisphereLight(0x0a0a2a, 0x000000, 0.6);
+scene.add(hemi);
+
+// 4. PointLight – Earth glow
+const earthGlow = new THREE.PointLight(0x2255ff, 2, 800);
+earthGlow.position.set(-300, 0, 0);
+scene.add(earthGlow);
+
+// 5. SpotLight – illuminating the ISS
+const issSpot = new THREE.SpotLight(0xffffff, 4, 500, Math.PI / 6, 0.3);
+issSpot.position.set(0, 200, 0);
+issSpot.target.position.set(0, 0, 0);
+scene.add(issSpot);
+scene.add(issSpot.target);
+
+
+// ─── Sun Sphere (visual) ──────────────────────────────────────────────────────
+const sunGeo = new THREE.SphereGeometry(80, 32, 32);
+const sunMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
+const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+sunMesh.position.copy(sunLight.position);
+scene.add(sunMesh);
+
+// Sun glow (PointLight near sun visual)
+const sunPointLight = new THREE.PointLight(0xfff5e0, 2, 5000);
+sunPointLight.position.copy(sunLight.position);
+scene.add(sunPointLight);
+
+// ─── Earth ────────────────────────────────────────────────────────────────────
+const earthGroup = new THREE.Group();
+earthGroup.position.set(-350, 0, 0);
+scene.add(earthGroup);
+
+const earthGeo = new THREE.SphereGeometry(200, 64, 64);
+const earthMat = new THREE.MeshPhongMaterial({
+  map:         earthDayTex,
+  normalMap:   earthNormalTex,
+  specularMap: earthSpecTex,
+  specular:    new THREE.Color(0x333333),
+  shininess:   25,
+});
+const earthMesh = new THREE.Mesh(earthGeo, earthMat);
+earthMesh.castShadow    = true;
+earthMesh.receiveShadow = true;
+earthGroup.add(earthMesh);
+
+// Cloud layer
+const cloudGeo = new THREE.SphereGeometry(203, 64, 64);
+const cloudMat = new THREE.MeshPhongMaterial({
+  map:         cloudsTex,
+  transparent: true,
+  opacity:     0.55,
+  depthWrite:  false,
+});
+const cloudMesh = new THREE.Mesh(cloudGeo, cloudMat);
+earthGroup.add(cloudMesh);
+
+// ─── Moon ─────────────────────────────────────────────────────────────────────
+const moonGeo  = new THREE.SphereGeometry(55, 32, 32);
+const moonMat  = new THREE.MeshStandardMaterial({ map: moonTex, roughness: 0.9, metalness: 0.0 });
+const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+moonMesh.position.set(-800, 60, -300);
+moonMesh.castShadow = true;
+scene.add(moonMesh);
+
+// ─── Asteroids ────────────────────────────────────────────────────────────────
+const asteroidMat = new THREE.MeshStandardMaterial({ color: 0x8a7560, roughness: 1.0, metalness: 0.1 });
+const asteroids   = [];
+
+function makeAsteroid(radius, x, y, z) {
+  const geo  = new THREE.IcosahedronGeometry(radius, 0);
+  // randomise verts slightly for rocky look
+  const pos  = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    pos.setXYZ(i,
+      pos.getX(i) * (0.85 + Math.random() * 0.3),
+      pos.getY(i) * (0.85 + Math.random() * 0.3),
+      pos.getZ(i) * (0.85 + Math.random() * 0.3));
+  }
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, asteroidMat);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = true;
+  scene.add(mesh);
+  asteroids.push(mesh);
+  return mesh;
+}
+
+// Belt of 12 asteroids
+const beltData = [
+  [8, 500, 30, 200], [12, 600, -20, -150], [6, 400, 60, -300],
+  [10, -500, -40, 250], [7, 550, 80, -100], [14, -450, 30, 100],
+  [9, 480, -60, 350], [5, -420, 50, -200], [11, 620, -30, 50],
+  [8, -560, 70, -400], [6, 380, -80, 200], [13, -480, -50, -350],
+];
+beltData.forEach(([r, x, y, z]) => makeAsteroid(r, x, y, z));
+
+// ─── Satellites ───────────────────────────────────────────────────────────────
+const satMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.8, roughness: 0.2 });
+
+function makeSatellite(x, y, z, scale = 1) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(8, 4, 4), satMat);
+  g.add(body);
+  const panelMat = new THREE.MeshStandardMaterial({ color: 0x1a3a6a, metalness: 0.6, roughness: 0.3 });
+  const panelL = new THREE.Mesh(new THREE.BoxGeometry(14, 0.4, 5), panelMat);
+  panelL.position.set(-11, 0, 0);
+  g.add(panelL);
+  const panelR = panelL.clone();
+  panelR.position.set(11, 0, 0);
+  g.add(panelR);
+  const dish = new THREE.Mesh(new THREE.CylinderGeometry(2, 0.5, 1, 16), satMat);
+  dish.position.set(0, 3, 0);
+  g.add(dish);
+  g.position.set(x, y, z);
+  g.scale.setScalar(scale);
+  scene.add(g);
+  return g;
+}
+
+// Basic satellites
+const sat1 = makeSatellite(150,   40,  100, 1.0);
+const sat2 = makeSatellite(-200,  60,  -80, 0.7);
+const sat3 = makeSatellite(80,   -30,  200, 0.8);
+
+// helper: make a glowing bulb mesh at a given position
+function makeBulb(color, x, y, z) {
+  const bulb = new THREE.Mesh(
+    new THREE.SphereGeometry(2, 8, 8),
+    new THREE.MeshBasicMaterial({ color })
+  );
+  bulb.position.set(x, y, z);
+  return bulb;
+}
+
+// ── Satellite with RED PointLight (distress beacon) ───────────────────────────
+const sat4 = makeSatellite(300, -60, -250, 0.9);
+const redBeacon = new THREE.PointLight(0xff2200, 6, 300);
+redBeacon.position.set(0, 8, 0);
+sat4.add(redBeacon);
+sat4.add(makeBulb(0xff2200, 0, 8, 0));
+
+// ── Satellite with BLUE PointLight (navigation light) ─────────────────────────
+const sat5 = makeSatellite(-320, 80, 180, 1.1);
+const blueNav = new THREE.PointLight(0x0088ff, 5, 350);
+blueNav.position.set(0, 8, 0);
+sat5.add(blueNav);
+sat5.add(makeBulb(0x0088ff, 0, 8, 0));
+
+// ── Satellite with GREEN PointLight (comms relay) ─────────────────────────────
+const sat6 = makeSatellite(220, 100, -320, 0.85);
+const greenComms = new THREE.PointLight(0x00ff88, 5, 300);
+greenComms.position.set(0, 8, 0);
+sat6.add(greenComms);
+sat6.add(makeBulb(0x00ff88, 0, 8, 0));
+
+// ── Satellite with SPOTLIGHT pointed at ISS ───────────────────────────────────
+const sat7 = makeSatellite(0, 180, 80, 1.2);
+const searchLight = new THREE.SpotLight(0xffffff, 8, 600, Math.PI / 10, 0.4);
+searchLight.position.set(0, 0, 0);
+searchLight.target.position.set(0, -180, -80);
+scene.add(searchLight.target);
+sat7.add(searchLight);
+const spotHousing = new THREE.Mesh(
+  new THREE.ConeGeometry(3, 8, 12),
+  new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9 })
+);
+spotHousing.position.set(0, -6, 0);
+spotHousing.rotation.x = Math.PI;
+sat7.add(spotHousing);
+
+// ── Weather/Science satellite with YELLOW PointLight ─────────────────────────
+const sat8 = makeSatellite(-150, -80, -180, 0.75);
+const yellowSci = new THREE.PointLight(0xffee00, 4, 280);
+yellowSci.position.set(0, 8, 0);
+sat8.add(yellowSci);
+sat8.add(makeBulb(0xffee00, 0, 8, 0));
+
+// ── Deep space probe with PURPLE PointLight ────────────────────────────────────
+const sat9 = makeSatellite(400, 20, 350, 0.65);
+const purpleProbe = new THREE.PointLight(0xcc44ff, 5, 320);
+purpleProbe.position.set(0, 8, 0);
+sat9.add(purpleProbe);
+sat9.add(makeBulb(0xcc44ff, 0, 8, 0));
+
+// All satellites list for animation + black hole
+const allSats = [sat1, sat2, sat3, sat4, sat5, sat6, sat7, sat8, sat9];
+
+// ─── Space Debris (small cubes / spheres scattered around) ────────────────────
+const debrisMat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.8, metalness: 0.3 });
+const debrisGroup = new THREE.Group();
+scene.add(debrisGroup);
+
+for (let i = 0; i < 20; i++) {
+  const geo  = Math.random() > 0.5
+    ? new THREE.BoxGeometry(2, 2, 2)
+    : new THREE.SphereGeometry(1.2, 6, 6);
+  const mesh = new THREE.Mesh(geo, debrisMat);
+  mesh.position.set(
+    (Math.random() - 0.5) * 500,
+    (Math.random() - 0.5) * 200,
+    (Math.random() - 0.5) * 500,
+  );
+  mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+  debrisGroup.add(mesh);
+}
+
+// ─── Extra primary shapes to reach 20+ ───────────────────────────────────────
+// Fuel tanks (cylinders)
+const tankMat = new THREE.MeshStandardMaterial({ color: 0xddddee, metalness: 0.5, roughness: 0.4 });
+const tankPositions = [[30, 10, 5], [-30, 10, 5], [30, -10, 5], [-30, -10, 5]];
+tankPositions.forEach(([x, y, z]) => {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 10, 16), tankMat);
+  mesh.position.set(x, y, z);
+  mesh.rotation.z = Math.PI / 2;
+  scene.add(mesh);
+});
+
+// Docking rings (torus)
+const ringMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.2 });
+[[-50, 0, 0], [50, 0, 0]].forEach(([x, y, z]) => {
+  const mesh = new THREE.Mesh(new THREE.TorusGeometry(8, 1.5, 16, 40), ringMat);
+  mesh.position.set(x, y, z);
+  mesh.rotation.y = Math.PI / 2;
+  scene.add(mesh);
+});
+
+// Communication antenna (cone)
+const antMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.3 });
+const antCone = new THREE.Mesh(new THREE.ConeGeometry(3, 12, 8), antMat);
+antCone.position.set(0, 18, 0);
+scene.add(antCone);
+
+// Warning light spheres
+const warnMat = new THREE.MeshBasicMaterial({ color: 0xff4400 });
+[-60, 0, 60].forEach(x => {
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(1.5, 8, 8), warnMat);
+  mesh.position.set(x, 12, 0);
+  scene.add(mesh);
+});
+
+// ─── Starfield (Points) ───────────────────────────────────────────────────────
+const starGeo  = new THREE.BufferGeometry();
+const starCount = 8000;
+const starPos   = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount * 3; i++) starPos[i] = (Math.random() - 0.5) * 12000;
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+const starMat  = new THREE.PointsMaterial({ color: 0xffffff, size: 1.2, sizeAttenuation: true });
+scene.add(new THREE.Points(starGeo, starMat));
+
+// ─── ISS Model ────────────────────────────────────────────────────────────────
+// Place your downloaded ISS .glb at asgn5/src/models/iss.glb
+// Free model: https://poly.pizza/m/ISS (search "ISS" on poly.pizza)
+const gltfLoader = new GLTFLoader();
+let issModel = null;
+
+gltfLoader.load(
+  './models/iss.glb',
+  (gltf) => {
+    issModel = gltf.scene;
+    issModel.scale.setScalar(0.8);
+    issModel.position.set(0, 0, 0);
+    issModel.traverse(child => {
+      if (child.isMesh) {
+        child.castShadow    = true;
+        child.receiveShadow = true;
+      }
+    });
+    scene.add(issModel);
+    document.getElementById('loading').style.display = 'none';
+  },
+  (xhr) => { console.log('ISS: ' + (xhr.loaded / xhr.total * 100).toFixed(1) + '% loaded'); },
+  (err) => {
+    console.warn('ISS model not found – using placeholder:', err);
+    // Placeholder ISS: central truss (box) + solar arrays (boxes)
+    issModel = new THREE.Group();
+    const issGroup = issModel;
+    const trussMat  = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8, roughness: 0.2 });
+    const panelMat2 = new THREE.MeshStandardMaterial({ color: 0x1a3a8a, metalness: 0.5, roughness: 0.3 });
+
+    // Main truss
+    issGroup.add(new THREE.Mesh(new THREE.BoxGeometry(120, 4, 4), trussMat));
+    // Habitation modules
+    [[-20, 0, 0], [0, 0, 0], [20, 0, 0]].forEach(([x, y, z]) => {
+      const mod = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 15, 16), trussMat);
+      mod.rotation.z = Math.PI / 2;
+      mod.position.set(x, 0, 8);
+      issGroup.add(mod);
+    });
+    // Solar panels
+    [[-50, 0, 0], [-30, 0, 0], [30, 0, 0], [50, 0, 0]].forEach(([x]) => {
+      [[14], [-14]].forEach(([z]) => {
+        const panel = new THREE.Mesh(new THREE.BoxGeometry(20, 0.5, 10), panelMat2);
+        panel.position.set(x, 0, z);
+        issGroup.add(panel);
+      });
+    });
+
+    scene.add(issGroup);
+    document.getElementById('loading').style.display = 'none';
+  }
+);
+
+// ─── Earth Explosion System ───────────────────────────────────────────────────
+let exploding  = false;
+let explodeDone = false;
+const fragments = [];
+const FRAG_COUNT = 80;
+
+// Flash light for the explosion
+const flashLight = new THREE.PointLight(0xff6600, 0, 3000);
+flashLight.position.copy(earthGroup.position);
+scene.add(flashLight);
+
+function triggerExplosion() {
+  if (exploding || explodeDone) return;
+  exploding = true;
+  document.getElementById('explode-btn').disabled = true;
+
+  // Spawn fragment chunks flying outward from Earth
+  const fragMats = [
+    new THREE.MeshStandardMaterial({ color: 0x2266aa, roughness: 0.8 }), // ocean
+    new THREE.MeshStandardMaterial({ color: 0x44aa44, roughness: 0.9 }), // land
+    new THREE.MeshStandardMaterial({ color: 0x885522, roughness: 1.0 }), // rock
+    new THREE.MeshStandardMaterial({ color: 0xccddff, roughness: 0.4, transparent: true, opacity: 0.7 }), // ice
+  ];
+
+  for (let i = 0; i < FRAG_COUNT; i++) {
+    const size  = 5 + Math.random() * 40;
+    const geo   = Math.random() < 0.5
+      ? new THREE.IcosahedronGeometry(size, 0)
+      : new THREE.BoxGeometry(size, size * (0.5 + Math.random()), size * (0.5 + Math.random()));
+    const mat   = fragMats[Math.floor(Math.random() * fragMats.length)];
+    const frag  = new THREE.Mesh(geo, mat);
+
+    // Start at earth position
+    frag.position.copy(earthGroup.position);
+
+    // Random velocity outward
+    const vel = new THREE.Vector3(
+      (Math.random() - 0.5) * 12,
+      (Math.random() - 0.5) * 12,
+      (Math.random() - 0.5) * 12,
+    ).normalize().multiplyScalar(3 + Math.random() * 8);
+
+    frag.userData.vel = vel;
+    frag.userData.rotVel = new THREE.Vector3(
+      (Math.random() - 0.5) * 0.15,
+      (Math.random() - 0.5) * 0.15,
+      (Math.random() - 0.5) * 0.15,
+    );
+    frag.castShadow = true;
+    scene.add(frag);
+    fragments.push(frag);
+  }
+
+  // Hide Earth
+  earthMesh.visible = false;
+  cloudMesh.visible = false;
+}
+
+// ─── Black Hole ───────────────────────────────────────────────────────────────
+let blackHoleActive = false;
+let bhGravityStrength = 0; // starts at 0, ramps up over time
+
+const blackHoleGroup = new THREE.Group();
+blackHoleGroup.position.set(2200, 300, 1800); // far away
+blackHoleGroup.visible = false;
+scene.add(blackHoleGroup);
+
+// Black sphere core
+const bhCore = new THREE.Mesh(
+  new THREE.SphereGeometry(30, 32, 32),
+  new THREE.MeshBasicMaterial({ color: 0x000000 })
+);
+blackHoleGroup.add(bhCore);
+
+// Accretion disk — glowing torus
+const diskMat = new THREE.MeshBasicMaterial({ color: 0xff6600, side: THREE.DoubleSide });
+const disk1 = new THREE.Mesh(new THREE.TorusGeometry(55, 8, 16, 80), diskMat);
+disk1.rotation.x = Math.PI / 2;
+blackHoleGroup.add(disk1);
+
+const disk2Mat = new THREE.MeshBasicMaterial({ color: 0xffaa00, side: THREE.DoubleSide });
+const disk2 = new THREE.Mesh(new THREE.TorusGeometry(70, 4, 16, 80), disk2Mat);
+disk2.rotation.x = Math.PI / 2.2;
+blackHoleGroup.add(disk2);
+
+const disk3Mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+const disk3 = new THREE.Mesh(new THREE.TorusGeometry(42, 3, 16, 80), disk3Mat);
+disk3.rotation.x = Math.PI / 1.8;
+blackHoleGroup.add(disk3);
+
+// Purple gravitational glow light
+const bhLight = new THREE.PointLight(0x9b30ff, 0, 8000);
+blackHoleGroup.add(bhLight);
+
+// Every object in the scene that can be sucked in
+// We build this list when the black hole spawns so ISS model is included
+let suckables = [];
+
+function buildSuckables() {
+  suckables = [];
+  // Add everything with a position that isn't the black hole itself
+  const toAdd = [
+    earthGroup, moonMesh, sunMesh,
+    ...allSats,
+    debrisGroup,
+    ...asteroids,
+    antCone,
+  ];
+  toAdd.forEach(obj => {
+    // give each a velocity vector if it doesn't have one
+    if (!obj.userData.bhVel) obj.userData.bhVel = new THREE.Vector3();
+    suckables.push(obj);
+  });
+  // Also include ISS if loaded
+  if (issModel && !issModel.userData.bhVel) {
+    issModel.userData.bhVel = new THREE.Vector3();
+    suckables.push(issModel);
+  }
+  // Include explosion fragments if they exist
+  fragments.forEach(f => {
+    if (!f.userData.bhVel) f.userData.bhVel = new THREE.Vector3();
+    suckables.push(f);
+  });
+}
+
+function spawnBlackHole() {
+  if (blackHoleActive) return;
+  blackHoleActive = true;
+  blackHoleGroup.visible = true;
+  bhLight.intensity = 5;
+  bhGravityStrength = 0;
+  buildSuckables();
+  document.getElementById('blackhole-btn').disabled = true;
+}
+
+// ─── Animation Loop ───────────────────────────────────────────────────────────
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  // Earth rotation
+  if (!explodeDone) {
+    earthMesh.rotation.y += 0.0008;
+    cloudMesh.rotation.y += 0.0010;
+  }
+
+  // Moon orbit around Earth
+  const moonAngle = t * 0.05;
+  moonMesh.position.set(
+    earthGroup.position.x + Math.cos(moonAngle) * 400,
+    earthGroup.position.y + Math.sin(moonAngle * 0.3) * 40,
+    earthGroup.position.z + Math.sin(moonAngle) * 400,
+  );
+  moonMesh.rotation.y += 0.001;
+
+  // ISS slow rotation / orbit
+  if (issModel) {
+    issModel.rotation.y += 0.001;
+  }
+
+  // Satellites drift + beacon lights blink
+  allSats.forEach((s, i) => {
+    s.rotation.y += 0.003 + i * 0.0005;
+    s.rotation.x += 0.002 * (i % 2 === 0 ? 1 : -1);
+  });
+
+  // Blink the coloured beacon lights
+  redBeacon.intensity    = 6  * (Math.sin(t * 5.0) > 0 ? 1 : 0.05);
+  blueNav.intensity      = 5  * (Math.sin(t * 3.5 + 1) > 0 ? 1 : 0.05);
+  greenComms.intensity   = 5  * (Math.sin(t * 4.2 + 2) > 0 ? 1 : 0.05);
+  yellowSci.intensity    = 4  * (Math.sin(t * 2.8 + 0.5) > 0 ? 1 : 0.05);
+  purpleProbe.intensity  = 5  * (Math.sin(t * 6.1 + 3) > 0 ? 1 : 0.05);
+  // Searchlight slow sweep
+  searchLight.intensity  = 8  * (0.6 + 0.4 * Math.sin(t * 1.5));
+
+  // Warning lights blink
+  const blink = Math.sin(t * 4) > 0;
+  scene.traverse(child => {
+    if (child.material && child.material.color &&
+        child.material.color.getHex() === 0xff4400) {
+      child.material.color.setHex(blink ? 0xff4400 : 0x330000);
+    }
+  });
+
+  // Asteroid slow rotation
+  asteroids.forEach((a, i) => { a.rotation.y += 0.002 * (i % 2 === 0 ? 1 : -1); });
+
+  // Debris drift
+  debrisGroup.rotation.y += 0.0001;
+
+  // ── Black Hole update ──
+  if (blackHoleActive) {
+    // Ramp up gravity strength over ~8 seconds to full power
+    bhGravityStrength = Math.min(bhGravityStrength + 0.003, 1.0);
+
+    // Spin accretion disks faster as gravity ramps up
+    const spinSpeed = 0.01 + bhGravityStrength * 0.06;
+    disk1.rotation.z += spinSpeed;
+    disk2.rotation.z -= spinSpeed * 0.7;
+    disk3.rotation.z += spinSpeed * 1.4;
+
+    // Pulse the glow — brighter as it gets stronger
+    bhLight.intensity = (3 + bhGravityStrength * 15) + Math.sin(t * 6) * 2;
+    bhLight.distance  = 2000 + bhGravityStrength * 8000;
+
+    const bhPos = blackHoleGroup.position;
+
+    suckables.forEach(obj => {
+      if (!obj.visible) return;
+
+      const dir  = bhPos.clone().sub(obj.position);
+      const dist = dir.length();
+      const consumeRadius = 60 + blackHoleGroup.scale.x * 20;
+
+      if (dist < consumeRadius) {
+        obj.visible = false;
+        bhLight.intensity = 60; // flash on consume
+        // Grow slightly
+        const s = blackHoleGroup.scale.x;
+        blackHoleGroup.scale.setScalar(Math.min(s + 0.08, 5.0));
+      } else {
+        // Accelerating gravity: strength scales with bhGravityStrength and proximity
+        // Inverse square but capped so distant objects still feel it
+        const forceMag = bhGravityStrength * Math.min(80000 / (dist * dist), 18);
+        dir.normalize().multiplyScalar(forceMag);
+
+        // Accumulate velocity (objects accelerate, not teleport)
+        obj.userData.bhVel.add(dir);
+        // Cap max speed so nothing tunnels through
+        if (obj.userData.bhVel.length() > 40) obj.userData.bhVel.setLength(40);
+        obj.position.add(obj.userData.bhVel);
+
+        // Spin wildly as they fall in
+        const spinRate = Math.min(0.02 + bhGravityStrength * 0.15 * (1000 / dist), 0.3);
+        obj.rotation.x += spinRate;
+        obj.rotation.y += spinRate * 0.7;
+      }
+    });
+  }
+
+  // ── Explosion update ──
+  if (exploding) {
+    // Flash
+    flashLight.intensity = Math.max(0, flashLight.intensity - 0.3);
+    if (flashLight.intensity === 0 && !explodeDone) {
+      // one-time set high on first frame of explosion
+    }
+
+    fragments.forEach(f => {
+      f.position.addScaledVector(f.userData.vel, 0.5);
+      f.rotation.x += f.userData.rotVel.x;
+      f.rotation.y += f.userData.rotVel.y;
+      f.rotation.z += f.userData.rotVel.z;
+      // Slow down over time
+      f.userData.vel.multiplyScalar(0.995);
+    });
+
+    if (!explodeDone) {
+      flashLight.intensity = 60;
+      explodeDone = true;
+    }
+  }
+
+  // When black hole is active, smoothly move camera target toward it
+  if (blackHoleActive) {
+    controls.target.lerp(blackHoleGroup.position, 0.03);
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// Kick off flash on first explosion frame
+function startExplosion() {
+  flashLight.intensity = 80;
+  triggerExplosion();
+  // Reveal black hole button after Earth is detonated
+  document.getElementById('blackhole-btn').classList.add('visible');
+}
+
+animate();
+
+// ─── Event Listeners ──────────────────────────────────────────────────────────
+document.getElementById('explode-btn').addEventListener('click', startExplosion);
+document.getElementById('blackhole-btn').addEventListener('click', spawnBlackHole);
+window.addEventListener('keydown', e => {
+  if (e.key === 'e' || e.key === 'E') startExplosion();
+  if (e.key === 'b' || e.key === 'B') spawnBlackHole();
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
