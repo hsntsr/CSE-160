@@ -94,7 +94,7 @@
 <div id="ui">
   <h2>Assignment 5 – Hunter Pettus &nbsp;|&nbsp; ISS – Low Earth Orbit</h2>
   <p>Left-drag: Orbit &nbsp;|&nbsp; Right-drag: Pan &nbsp;|&nbsp; Scroll: Zoom<br>
-     Press <b>E</b> to detonate Earth &nbsp;|&nbsp; Press <b>B</b> to spawn Black Hole</p>
+     Press <b>E</b> to detonate Earth <span id="bh-hint" style="display:none">&nbsp;|&nbsp; Press <b>B</b> to spawn Black Hole</span></p>
 </div>
 
 <div id="buttons">
@@ -549,7 +549,7 @@ function triggerExplosion() {
 
 // ─── Black Hole ───────────────────────────────────────────────────────────────
 let blackHoleActive = false;
-let bhGravityStrength = 0; // starts at 0, ramps up over time
+let bhGravityStrength = 0;
 
 const blackHoleGroup = new THREE.Group();
 blackHoleGroup.position.set(2200, 300, 1800); // far away
@@ -622,6 +622,14 @@ function spawnBlackHole() {
   bhGravityStrength = 0;
   buildSuckables();
   document.getElementById('blackhole-btn').disabled = true;
+
+  // Place camera perpendicular to the scene→blackhole axis so
+  // scene objects are on the left and black hole is on the right.
+  // scene ≈ (0,0,0), BH = (2200,300,1800). Midpoint = (1100,150,900).
+  // Perpendicular (rotate BH dir 90° around Y): (-1800,0,2200) → normalised × 2800
+  camera.position.set(-482, 600, 2835);
+  controls.target.set(1100, 0, 900);
+  controls.update();
 }
 
 // ─── Animation Loop ───────────────────────────────────────────────────────────
@@ -754,10 +762,6 @@ function animate() {
     }
   }
 
-  // When black hole is active, smoothly move camera target toward it
-  if (blackHoleActive) {
-    controls.target.lerp(blackHoleGroup.position, 0.03);
-  }
 
   controls.update();
   renderer.render(scene, camera);
@@ -769,6 +773,7 @@ function startExplosion() {
   triggerExplosion();
   // Reveal black hole button after Earth is detonated
   document.getElementById('blackhole-btn').classList.add('visible');
+  document.getElementById('bh-hint').style.display = 'inline';
 }
 
 animate();
@@ -778,7 +783,7 @@ document.getElementById('explode-btn').addEventListener('click', startExplosion)
 document.getElementById('blackhole-btn').addEventListener('click', spawnBlackHole);
 window.addEventListener('keydown', e => {
   if (e.key === 'e' || e.key === 'E') startExplosion();
-  if (e.key === 'b' || e.key === 'B') spawnBlackHole();
+  if ((e.key === 'b' || e.key === 'B') && explodeDone) spawnBlackHole();
 });
 
 window.addEventListener('resize', () => {
